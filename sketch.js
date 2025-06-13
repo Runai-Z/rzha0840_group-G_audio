@@ -357,10 +357,7 @@ class BasicCircle {
 
   update() {
     if (this.state === 'PLAYING') {
-      // CHANGED: 旋转速度修改为每4拍（一小节）转一圈，视觉效果更佳
-      // (60 / masterBPM) = 每拍秒数
-      // * 4 = 每小节秒数
-      // * 60 = 每小节帧数 (假设60fps)
+      // Rotation speed is one full turn every 4 beats (one bar)
       const framesPerBar = (60 / masterBPM) * 4 * 60;
       this.rotationSpeed = TWO_PI / framesPerBar;
       this.currentAngle += this.rotationSpeed;
@@ -402,7 +399,7 @@ class BasicCircle {
     }
   }
 
-  //依赖全局的 checkPendingTracks 进行同步
+  // Synchronization relies on the checkPendingTracks
   handleClick(sound) {
     switch (this.state) {
       case 'INACTIVE': {
