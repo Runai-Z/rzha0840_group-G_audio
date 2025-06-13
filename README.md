@@ -6,11 +6,11 @@ After the page finishes loading, users will see a visual composition generated b
 ---
 
 ## Details of my individual approach to animating the group code  
-- **I chose *Audio* as the method to drive my individual code.**
+**I chose *Audio* as the method to drive my individual code.**
 
 ---
 
-- **2.1 The properties that are animated and how they are animated**
+**2.1 The properties that are animated and how they are animated**
   - My design focuses on audio interaction at the BasicCircle level, where each BasicCircle and its associated ring components are modularized to support both independent animation and interactive linkage. Within the main BasicCircle class, rotation angle changes are driven by state control (such as the PLAYING state), enabling synchronized rotation of all linked subcomponents—like dot rings, spoke rings, and concentric rings—ensuring consistent and coordinated animation and interaction.
   - To ensure music enters in a unified rhythm, I selected audio tracks with a BPM of 120 and use a global variable masterBPM to calculate the rotation speed, so that one full rotation corresponds to a fixed number of beats (for example, one full turn every 4 beats). This achieves synchronization between the animation and the musical beat, creating a cohesive dynamic visual effect.
   - Additionally, the interaction design uses click events and a state machine (INACTIVE, PENDING, PLAYING) to control audio playback start and stop, ensuring new tracks can be introduced orderly on rhythm nodes without off-beat errors. Visual cues such as a gray overlay and rotation effects intuitively communicate different states, enhancing user awareness of the system status.
@@ -18,10 +18,10 @@ After the page finishes loading, users will see a visual composition generated b
 
 ---
 
-- **2.2 Imaging Technique Inspiration**
+**2.2 Imaging Technique Inspiration**
 - My visual inspiration did not come directly from a specific image, but rather emerged from a broader reflection on generative art and audio interaction. The main sources of inspiration for this work include:
   - Music visualization tools and DJ software such as Remixlive, where each button represents a loop track, allowing users to freely create music they enjoy.
-  ![An image of the Remixlive]（image/Remixlive.PNG）
+![An image of the Remixlive](image/Remixlive.PNG)
   - The music game Incredibox, which enables users to compose music through intuitive drag-and-drop interactions.
   [![Watch the video](https://img.youtube.com/vi/7OC54a2kRVU/hqdefault.jpg)](https://www.youtube.com/watch?v=7OC54a2kRVU)
 - Both allow users to create music they enjoy through interaction, and use special visual effects to indicate different music states — such as when a sound is off-beat or not yet activated.
@@ -33,7 +33,7 @@ After the page finishes loading, users will see a visual composition generated b
 ---
 
 
-- **2.3 Coding Technique Exploration**
+**2.3 Coding Technique Exploration**
 - I did not make extensive modifications to the group code, only the previously mentioned grouping by BasicCircle units.
 
 - In the BasicCircle class, we implemented beat-synchronized music interaction using the audioContext.currentTime method. Each circle has its own playback state: INACTIVE, PENDING, and PLAYING. When the mouse is clicked:
@@ -52,7 +52,7 @@ Notes:
 ---
 
 
-- **2.4 External Resources**
-The technical principles are based on suggestions from AI tools such as ChatGPT and Gemini. For example, in this project, following ChatGPT's advice, I used audioContext.currentTime to track music playback time to ensure rhythm-aligned playback.
-The project only uses p5.js and the Web Audio API, with no other external libraries.
-All music assets are sourced from the free audio platform [BandLab](https://www.bandlab.com/)
+**2.4 External Resources**
+- The technical principles are based on suggestions from AI tools such as ChatGPT and Gemini. For example, in this project, following ChatGPT's advice, I used audioContext.currentTime to track music playback time to ensure rhythm-aligned playback.
+- The project only uses p5.js and the Web Audio API, with no other external libraries.
+- All music assets are sourced from the free audio platform [BandLab](https://www.bandlab.com/)
