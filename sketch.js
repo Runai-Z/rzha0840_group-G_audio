@@ -119,12 +119,6 @@ function draw() {
   noStroke();
   fill(255);
   rect(imgSize, 0, padding, imgSize);
-
-  if (!audioStarted) {
-    fill(0);
-    textAlign(CENTER, CENTER);
-    text("Click to start audio", imgSize / 2, imgSize / 2);
-  }
 }
 
 //window resize
@@ -363,8 +357,12 @@ class BasicCircle {
 
   update() {
     if (this.state === 'PLAYING') {
-      // Calculate rotation speed based on BPM so that one full rotation equals one beat
-      this.rotationSpeed = TWO_PI / (60 / masterBPM * 60); // Convert to rotation angle per frame
+      // CHANGED: 旋转速度修改为每4拍（一小节）转一圈，视觉效果更佳
+      // (60 / masterBPM) = 每拍秒数
+      // * 4 = 每小节秒数
+      // * 60 = 每小节帧数 (假设60fps)
+      const framesPerBar = (60 / masterBPM) * 4 * 60;
+      this.rotationSpeed = TWO_PI / framesPerBar;
       this.currentAngle += this.rotationSpeed;
     }
   }
@@ -404,17 +402,15 @@ class BasicCircle {
     }
   }
 
+  //依赖全局的 checkPendingTracks 进行同步
   handleClick(sound) {
     switch (this.state) {
       case 'INACTIVE': {
         const isAnyPlaying = basicCircles.some(bc => bc.state === 'PLAYING');
         if (isAnyPlaying) {
           this.state = 'PENDING';
-          this.pendingStartTime = millis();
-          this.waitDuration = 2000;
         } else {
           this.state = 'PLAYING';
-          this.currentAngle = 0;
           sound.loop();
         }
         break;
@@ -431,9 +427,6 @@ class BasicCircle {
     }
   }
 }
-
-
-
 
 class RingFill {//set line ring circle logic
   constructor(x, y, colorFlag = 'r', innerRadius = 10, outerRadius = 35, count = 5) {
@@ -515,7 +508,6 @@ class PinkCurveSet {//set pink curve log
     pop();
   }
 }
-
 
 class DotRing {//set dot circle logic
   constructor(
