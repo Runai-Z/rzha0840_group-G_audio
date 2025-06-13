@@ -16,6 +16,16 @@ let spokeRings = [];   //Spoke rings decoration
 //An array of chains that fill the gaps between circles
 let chains = [];
 
+// Store loaded audio
+let sounds = [];
+
+// Define the main clock
+let masterBPM = 120;
+let beatInterval = 60 / masterBPM; // Duration of one beat in seconds
+let startTime; 
+let lastBeatChecked = 0; // used for beat checking
+let audioStarted = false;
+
 //each position dot color map
 const dotRingColorMap = {
 //line one
@@ -40,14 +50,36 @@ const dotRingColorMap = {
 };
 
 function preload() {
-  //referenceImg = loadImage('image/Group_Pic.jpg');
+// referenceImg = loadImage('image/Group_Pic.jpg');
+// originally used to store artwork during the group’s code iteration
+// Now it's used to store audio
+// all music assets are sourced from the free audio site https://www.bandlab.com/
+  sounds = [
+    loadSound("audio/808_120BPM_Dm_Fight_bass_120BPM_Dminor_BANDLAB.MP3"),
+    loadSound("audio/Afflecks_120_Perc_4bars_percussion_120BPM_BANDLAB.MP3"),
+    loadSound("audio/CowboyCandy_SportsChant_120_C_Vox_voice_120BPM_Cmajor_BANDLAB.MP3"),
+    loadSound("audio/DirtBreaks_120bpm_ShuffleDrums_4bar_drum_120BPM_BANDLAB.MP3"),
+    loadSound("audio/DirtyRecords_Horror1_120_Drums8_beats_120BPM_BANDLAB.MP3"),
+    loadSound("audio/Elm_120_Fm_Vocal_8bars_female-vocals_120BPM_Fminor_BANDLAB.MP3"),
+    loadSound("audio/FRBDRNB_Section_120_C_Pad_pad_120BPM_Cmajor_BANDLAB.MP3"),
+    loadSound("audio/HappySounds_120bpm_Drums_drum_120BPM_BANDLAB.MP3"),
+    loadSound("audio/KPOL_VoxWelcome_120_Em_Vocals_1_female-vocals_120BPM_Eminor_BANDLAB.MP3"),
+    loadSound("audio/MUHH_Yeahboy_120_Bm_Full_Track_sample_120BPM_Bminor_BANDLAB.MP3"),
+    loadSound("audio/NightVibes_120_Drums13_6bar_drum_120BPM_BANDLAB.MP3"),
+    loadSound("audio/PiccadillyExpress_120_Cm_Bass_4bars_bass_120BPM_Cminor_BANDLAB.MP3"),
+    loadSound("audio/Swallow_120_C_Guitar_02_4bars_guitar_120BPM_Cmajor_BANDLAB.MP3"),
+    loadSound("audio/TLPG_120_Eb_Electric_Guitar_3_4bars_guitar_120BPM_E♭major_BANDLAB.MP3"),
+    loadSound("audio/TLPG_120_Eb_Electric_Guitar_6_4bars_guitar_120BPM_E♭major_BANDLAB.MP3"),
+    loadSound("audio/TrapPiper_Squared_120_Fm_Flutes_woodwinds_120BPM_Fminor_BANDLAB.MP3"),
+    loadSound("audio/Travisty_Stub_120_Bm_Pad_8bar_pad_120BPM_Bminor_BANDLAB.MP3")
+  ] ;
 }
 
 function setup() {
   createCanvas(imgSize * 2 + padding, imgSize);
   //referenceImg.resize(imgSize, imgSize); // make both 500
-  noLoop();
-
+  //noLoop(); // Delete this line to enable animation
+  
   //set circle and its docoration
   setupCircle();
   setupDotRings();
@@ -55,9 +87,44 @@ function setup() {
   setupSpokeRings();
   setupRingFill()
   setupPinkCurveSet();
+  
   //set chain
   setupChains();
   
+  // Set up the association between decorations and their corresponding circles
+  linkDecorationsToCircles();
+}
+
+function draw() {
+  background(255);
+  scale(scaleFactor);
+
+  if (audioStarted) {
+    checkPendingTracks();
+  }
+
+  // Draw static elements 
+  noStroke();
+  fill('#2D5574');
+  rect(0, 0, imgSize, imgSize);
+  for (let ch of chains) ch.display();
+
+  // Draw all interactive circles
+  for (let basicCircle of basicCircles) {
+    basicCircle.update();
+    basicCircle.display();
+  }
+
+  // Draw UI elements (outside the main loop) 
+  noStroke();
+  fill(255);
+  rect(imgSize, 0, padding, imgSize);
+
+  if (!audioStarted) {
+    fill(0);
+    textAlign(CENTER, CENTER);
+    text("Click to start audio", imgSize / 2, imgSize / 2);
+  }
 }
 
 //window resize
@@ -68,43 +135,67 @@ function windowResized() {
   redraw();
 }
 
-//
-function draw() {
-  background(255);
-  scale(scaleFactor); // window scale
-  // draw part
-  noStroke();
-  fill('#2D5574');
-  rect(0, 0, imgSize, imgSize);
-
-  //draw each part array
-  for (let basicCircle of basicCircles) {
-    basicCircle.display();
+// Detect mouse press
+// If the audio context is not running, resume it and record the start time
+// Then handle any interaction with circles 
+function mousePressed() {
+  if (getAudioContext().state !== 'running') {
+    getAudioContext().resume();
+    startTime = getAudioContext().currentTime;
+    audioStarted = true;
   }
-  for (const idr of innerDotRings) idr.display();
+  handleCircleClick();
+}
 
-  for (const dr of dotRings) dr.display();
-
-  for (const sr of spokeRings) sr.display();
-
-  for (let rf of ringFills) rf.display();
-  
-  for (let ch of chains) ch.display();
-
-  for (let pair of pinkCurveSet.curvePairs) {
-    pinkCurveSet.drawPinkCurve(pair[0], pair[1]);
+// Handle mouse click on circles
+function handleCircleClick() {
+  for (let i = basicCircles.length - 1; i >= 0; i--) { // Loop through the basicCircles array in reverse order
+    const bc = basicCircles[i];
+    // Calculate the distance between the mouse position and the circle's center
+    const d = dist(mouseX / scaleFactor, mouseY / scaleFactor, bc.x, bc.y);
+    // If the mouse is within the circle's outer radius
+    if (d < bc.outerRadius) {
+      // Trigger the circle's click handler with the corresponding sound
+      bc.handleClick(sounds[i]);
+      break;// Stop checking after the first match
+    }
   }
+}
 
-  
+// Check and activate pending tracks based on the current beat
+function checkPendingTracks() {
+  let currentTime = getAudioContext().currentTime;
+  let currentBeat = floor((currentTime - startTime) / beatInterval);
 
-  // blank area
-  noStroke();
-  fill(255);
-  rect(imgSize, 0, padding, imgSize);  
-  
-  // Refernce pic
-  //image(referenceImg, imgSize + padding, 0);
+  if (currentBeat > lastBeatChecked) {
+    lastBeatChecked = currentBeat;
 
+    // Find all circles that are pending playback
+    const pendingCircles = basicCircles.filter(bc => bc.state === 'PENDING');
+    for (let pendingCircle of pendingCircles) {
+      pendingCircle.state = 'PLAYING';
+      const index = basicCircles.indexOf(pendingCircle);
+      if (sounds[index]) {
+        // Calculate the time for the next beat
+        let nextBeatTime = startTime + (currentBeat + 1) * beatInterval;
+        // Set up and start the audio loop
+        sounds[index].playMode('sustain');
+        sounds[index].loop();
+        console.log(`Track ${index} has synced and is now playing.`);
+      }
+    }
+  }
+}
+
+
+// Link each circle to its corresponding decorative elements
+function linkDecorationsToCircles() {
+  for (let bc of basicCircles) {
+    bc.linkedDotRing = dotRings.find(d => d.x === bc.x && d.y === bc.y);
+    bc.linkedInnerDotRing = innerDotRings.find(d => d.x === bc.x && d.y === bc.y);
+    bc.linkedSpokeRing = spokeRings.find(s => s.x === bc.x && s.y === bc.y);
+    bc.linkedRingFill = ringFills.find(rf => rf.x === bc.x && rf.y === bc.y);
+  }
 }
 
 //Set function for each part
@@ -159,7 +250,6 @@ function setupSpokeRings() {//Spoke Rings setting
     { x: 217, y: 27, inner: 35, outer: 70, col: "#EE1D02" },  // spoke in main area
     { x: 125, y: 318, inner: 35, outer: 70, col: "#EE1D02" },
     { x: 515, y: 367, inner: 35, outer: 70, col: "#EE1D02" },
-
     // spoke in core area
     { x: 280, y: 278, inner: 10, outer: 35, col: "#FD603A" }, 
   ];
@@ -248,49 +338,102 @@ chains.push(new ChainLink([405,510], [399,475], 3, 3));
 }
 
 
-//Circle Part
-//Circle Part
-//Circle Part
+
+
+
+
 class BasicCircle {
   constructor(x, y, colorFlag = 0, outerType = '') {
     this.x = x;
     this.y = y;
-    this.outerRadius = 70; //Outer circle radius
-    this.innerRadius = 35; //Inner circle radius, main circle area is 35-70
-    this.colorFlag = colorFlag; // 0 = green, 1 = red
-    this.outerType = outerType; // '' | 'w' | 'y'
+    this.outerRadius = 70;
+    this.innerRadius = 35;
+    this.colorFlag = colorFlag;
+    this.outerType = outerType;
+
+    this.state = 'INACTIVE';
+    this.currentAngle = 0;
+    this.rotationSpeed = 0.01;
+
+    this.linkedDotRing = null;
+    this.linkedInnerDotRing = null;
+    this.linkedSpokeRing = null;
+    this.linkedRingFill = null;
+  }
+
+  update() {
+    if (this.state === 'PLAYING') {
+      // Calculate rotation speed based on BPM so that one full rotation equals one beat
+      this.rotationSpeed = TWO_PI / (60 / masterBPM * 60); // Convert to rotation angle per frame
+      this.currentAngle += this.rotationSpeed;
+    }
   }
 
   display() {
+    // Draw base circles (static part)
     noStroke();
-
-    // Outer circle (based on outerType) 35-70
-    if (this.outerType === 'w') {
-      fill('#ffffff'); // white
-    } else if (this.outerType === 'y') {
-      fill('#FEA80F'); // yellow
-    } else {
-      fill('#FEA80F'); // default
-    }
+    const outerFill = this.outerType === 'w' ? '#ffffff' : '#FEA80F';
+    fill(outerFill);
     circle(this.x, this.y, this.outerRadius * 2);
 
-    // Draw inner circle in fixed purple
     fill('#A9639C');
     circle(this.x, this.y, this.innerRadius * 2);
 
-    // Outer colored ring
-    let ringFill = this.colorFlag === 0 ? '#00cc66' : '#cc3333';
+    // Draw rotating decorations (dynamic part) 
+    if (this.linkedRingFill) this.linkedRingFill.display(this.currentAngle);
+    if (this.linkedInnerDotRing) this.linkedInnerDotRing.display(this.currentAngle);
+    if (this.linkedDotRing) this.linkedDotRing.display(this.currentAngle);
+    if (this.linkedSpokeRing) this.linkedSpokeRing.display(this.currentAngle);
+
+    // Draw topmost core circle and mask
+    const ringFillColor = this.colorFlag === 0 ? '#00cc66' : '#cc3333';
     stroke(0);
     strokeWeight(6);
-    fill(ringFill);
-    circle(this.x, this.y, 20); // radius 10
+    fill(ringFillColor);
+    circle(this.x, this.y, 20);
 
-    // center gray dot overlay
     noStroke();
     fill(150);
-    circle(this.x, this.y, 10); // radius 5
+    circle(this.x, this.y, 10);
+
+    // Draw gray overlay 
+    if (this.state === 'PENDING') {
+      fill(100, 100, 100, 150);
+      noStroke();
+      circle(this.x, this.y, this.outerRadius * 2);
+    }
+  }
+
+  handleClick(sound) {
+    switch (this.state) {
+      case 'INACTIVE': {
+        const isAnyPlaying = basicCircles.some(bc => bc.state === 'PLAYING');
+        if (isAnyPlaying) {
+          this.state = 'PENDING';
+          this.pendingStartTime = millis();
+          this.waitDuration = 2000;
+        } else {
+          this.state = 'PLAYING';
+          this.currentAngle = 0;
+          sound.loop();
+        }
+        break;
+      }
+
+      case 'PLAYING':
+        this.state = 'INACTIVE';
+        sound.stop();
+        break;
+
+      case 'PENDING':
+        this.state = 'INACTIVE';
+        break;
+    }
   }
 }
+
+
+
 
 class RingFill {//set line ring circle logic
   constructor(x, y, colorFlag = 'r', innerRadius = 10, outerRadius = 35, count = 5) {
@@ -310,16 +453,19 @@ class RingFill {//set line ring circle logic
     }
   }
 
-  display() { //draw a the ring outlines
+  // Modify the display method to accept a rotation angle parameter, with a default value
+  display(rotationAngle = 0) { //draw a the ring outlines
+    push();
+    translate(this.x, this.y); // Move the origin to the center of the circle
+    rotate(rotationAngle);      // Rotate the coordinate system
     noFill();
     stroke(this.color);
     strokeWeight(3);
-
-    //Draw count number of rings
     for (let i = 0; i < this.count; i++) {
       let r = map(i, 0, this.count - 1, this.innerRadius, this.outerRadius);
-      circle(this.x, this.y, r * 2);
+      circle(0, 0, r * 2);
     }
+    pop();
   }
 }
 
@@ -350,6 +496,11 @@ class PinkCurveSet {//set pink curve log
     const ctrlX = midX - Math.sign(x4 - x1) * this.offset;
 
     //using quadraticVertex
+    // We learned about this code through interaction with the teacher in class,
+    //  and decided to use it after checking the p5.js website and interacting with chatgpt.
+    // The princeple itself is to use two coordinates for the starting point,
+    // two coordinates for the stretching position,
+    // and two coordinates for the end point.
     push();
     stroke(255, 28, 90);
     strokeWeight(5);
@@ -385,27 +536,18 @@ class DotRing {//set dot circle logic
     this.col = col;
   }
 
-  display() { //set what look like
+  display(rotationAngle = 0) {
     push();
+    translate(this.x, this.y);
+    rotate(rotationAngle);
     noStroke();
     fill(this.col);
-
     for (let i = 0; i < this.rows; i++) {
-      // The radius of the current circle
-      const r = lerp(
-        this.innerR + this.dotDiam * 0.5,
-        this.outerR - this.dotDiam * 0.5,
-        i / (this.rows - 1)
-      );
-
-      // Calculate how many points are needed in this circle based on the circumference
+      const r = lerp(this.innerR + this.dotDiam / 2, this.outerR - this.dotDiam / 2, i / (this.rows - 1));
       const numDots = floor((TWO_PI * r) / (this.dotDiam * 1.6));
-
       for (let j = 0; j < numDots; j++) {
         const ang = (TWO_PI * j) / numDots;
-        const dx = this.x + r * cos(ang);
-        const dy = this.y + r * sin(ang);
-        circle(dx, dy, this.dotDiam);
+        circle(r * cos(ang), r * sin(ang), this.dotDiam);
       }
     }
     pop();
@@ -429,35 +571,22 @@ class SpokeRing {//set spoke ring logic
     this.col = col;
   }
 
-  display() {//Set up drawing style
+  display(rotationAngle = 0) {
     push();
+    translate(this.x, this.y);
+    rotate(rotationAngle);
     noFill();
     stroke(this.col);
     strokeWeight(this.sw);
     strokeCap(ROUND);
     strokeJoin(ROUND);
-
-    //Offset for inner and outer points to avoid overflow due to stroke(Ai suggest)
-    const outerOffset = 1 * this.sw;
-    const innerOffset = 1 * this.sw;
-
-    //Calculate number of vertices and angle step(Help by chatgpt)
     const totalVerts = this.nSpikes * 2;
     const step = TWO_PI / totalVerts;
-
-    //Draw
     beginShape();
     for (let i = 0; i < totalVerts; i++) {
       const ang = i * step;
-      const radius =
-        i % 2 === 0
-          ? this.outerR - outerOffset
-          : this.innerR + innerOffset;
-
-      vertex(
-        this.x + radius * cos(ang),
-        this.y + radius * sin(ang)
-      );
+      const radius = i % 2 === 0 ? this.outerR - this.sw : this.innerR + this.sw;
+      vertex(radius * cos(ang), radius * sin(ang));
     }
     endShape(CLOSE);
     pop();
